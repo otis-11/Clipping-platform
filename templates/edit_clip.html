@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit: {{ clip.title }} — Kiriakou Clipper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body { background: #0f0f1a; color: #e0e0e0; font-family: 'Inter', system-ui, sans-serif; }
+        .card { background: #1a1a2e; border: 1px solid #252547; border-radius: 12px; }
+        .btn-primary { background: #e94560; }
+        .btn-primary:hover { background: #c73550; }
+        .btn-green { background: #10b981; }
+        .btn-green:hover { background: #059669; }
+        .btn-outline { border: 1px solid #374151; background: transparent; }
+        .btn-outline:hover { background: #252547; }
+        .badge-pending { background: #f59e0b; color: #000; }
+        .badge-approved { background: #10b981; color: #fff; }
+        .badge-score { background: #6366f1; color: #fff; }
+        input, select, textarea {
+            background: #0f0f1a; border: 1px solid #374151; color: #e0e0e0;
+            border-radius: 8px; padding: 10px 14px; width: 100%; font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #e94560; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+<!-- Top Bar -->
+<div class="border-b border-gray-800 px-6 py-3 flex items-center justify-between" style="background:#0f0f1a;">
+    <div class="flex items-center gap-3">
+        <a href="/" class="text-gray-400 hover:text-white text-sm flex items-center gap-2">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+    <div class="flex items-center gap-3">
+        <i class="fas fa-scissors text-red-400"></i>
+        <span class="text-sm font-bold text-white">Kiriakou Clipper</span>
+    </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+
+        <!-- LEFT COLUMN: Video Player -->
+        <div class="flex-shrink-0 flex flex-col items-center">
+            <div class="rounded-xl overflow-hidden bg-black shadow-2xl" style="width:360px; height:640px;">
+                <video id="clip-video" class="w-full h-full object-contain" controls preload="auto"
+                       src="/preview/{{ clip.video_filename }}">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <div class="flex items-center gap-4 mt-4">
+                <span class="badge-score text-xs px-3 py-1 rounded-full font-medium">
+                    {{ clip.virality_score }}/10 virality
+                </span>
+                <span class="text-sm text-gray-400">
+                    {{ "%.0f"|format(clip.end_time - clip.start_time) }}s clip
+                </span>
+                {% if clip.approved %}
+                <span class="badge-approved text-xs px-3 py-1 rounded-full font-medium">Approved</span>
+                {% else %}
+                <span class="badge-pending text-xs px-3 py-1 rounded-full font-medium">Pending</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Edit Form -->
+        <div class="flex-1">
+            <form id="edit-form" class="space-y-5">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        <i class="fas fa-heading mr-1 text-cyan-400"></i> Title
+                        <span class="text-gray-600 font-normal">(shown on YouTube — max 100 chars)</span>
+                    </label>
+                    <input type="text" id="field-title" maxlength="100"
+                           value="{{ clip.title }}">
+                    <div class="text-right text-xs text-gray-600 mt-1">
+                        <span id="title-count">{{ clip.title|length }}</span>/100
+                    </div>
+                </div>
+
+                <!-- Hook -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        <i class="fas fa-bolt mr-1 text-yellow-400"></i> Hook Text
+                        <span class="text-gray-600 font-normal">(caption overlay in first 2 seconds)</span>
+                    </label>
+                    <input type="text" id="field-hook" maxlength="80"
+                           value="{{ clip.hook }}">
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        <i class="fas fa-align-left mr-1 text-green-400"></i> Description
+                    </label>
+                    <textarea id="field-description" rows="4">{{ clip.description }}</textarea>
+                </div>
+
+                <!-- Hashtags -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        <i class="fas fa-hashtag mr-1 text-purple-400"></i> Hashtags
+                        <span class="text-gray-600 font-normal">(space-separated)</span>
+                    </label>
+                    <input type="text" id="field-tags"
+                           value="{{ clip.tags }}">
+                </div>
+
+                <!-- Scheduled Post Time -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        <i class="fas fa-clock mr-1 text-cyan-400"></i> Scheduled Post Time
+                    </label>
+                    <select id="field-scheduled-time">
+                        {% for t in settings.post_times %}
+                        <option value="{{ t }}" {{ 'selected' if clip.scheduled_time == t else '' }}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Source Info -->
+                <div class="card p-4 text-sm text-gray-400 space-y-1">
+                    <p><strong class="text-gray-300">Source Video:</strong> {{ clip.source_video_title }}</p>
+                    <p><strong class="text-gray-300">Time Range:</strong> {{ "%.1f"|format(clip.start_time) }}s — {{ "%.1f"|format(clip.end_time) }}s</p>
+                    {% if clip.created_at %}
+                    <p><strong class="text-gray-300">Created:</strong> {{ clip.created_at[:16] }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap gap-3 pt-4 border-t border-gray-800">
+                    <button type="button" onclick="saveClip(false)"
+                            class="btn-outline text-cyan-400 border-cyan-800 hover:bg-cyan-900/30 px-6 py-3 rounded-lg text-sm font-medium">
+                        <i class="fas fa-save mr-2"></i>Save Draft
+                    </button>
+                    <button type="button" onclick="saveClip(true)"
+                            class="btn-green text-white px-6 py-3 rounded-lg text-sm font-medium">
+                        <i class="fas fa-check mr-2"></i>Approve & Save
+                    </button>
+                    <div class="flex-1"></div>
+                    <button type="button" onclick="rejectClip()"
+                            class="text-red-400 hover:text-red-300 px-6 py-3 rounded-lg text-sm font-medium border border-red-900 hover:bg-red-900/30">
+                        <i class="fas fa-trash mr-2"></i>Reject & Delete
+                    </button>
+                </div>
+
+                <!-- Save confirmation -->
+                <div id="save-msg" class="hidden text-green-400 text-sm font-medium text-center py-2">
+                    <i class="fas fa-check-circle mr-1"></i> Saved successfully!
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const FILENAME = "{{ filename }}";
+
+// Title character counter
+document.getElementById('field-title').addEventListener('input', function() {
+    document.getElementById('title-count').textContent = this.value.length;
+});
+
+async function saveClip(approve) {
+    const body = {
+        title: document.getElementById('field-title').value,
+        hook: document.getElementById('field-hook').value,
+        description: document.getElementById('field-description').value,
+        tags: document.getElementById('field-tags').value,
+        scheduled_time: document.getElementById('field-scheduled-time').value,
+    };
+
+    await fetch('/api/queue/edit/' + FILENAME, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+
+    if (approve) {
+        await fetch('/api/queue/approve/' + FILENAME, { method: 'POST' });
+    }
+
+    const msg = document.getElementById('save-msg');
+    msg.textContent = approve ? 'Approved & Saved!' : 'Draft Saved!';
+    msg.classList.remove('hidden');
+    setTimeout(() => {
+        if (approve) {
+            window.location.href = '/';
+        } else {
+            msg.classList.add('hidden');
+        }
+    }, 1500);
+}
+
+async function rejectClip() {
+    if (!confirm('Permanently delete this clip?')) return;
+    await fetch('/api/queue/reject/' + FILENAME, { method: 'POST' });
+    window.location.href = '/';
+}
+</script>
+
+</body>
+</html>
