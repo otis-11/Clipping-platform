@@ -22,18 +22,26 @@ def _get_client():
     return _client
 
 
-CLIP_DETECTION_PROMPT = """You are a viral content expert who identifies the best short-form clip moments from podcast transcripts.
+CLIP_DETECTION_PROMPT = """You are a viral content strategist specializing in political/intelligence podcast clips for YouTube Shorts and TikTok.
 
-Analyze this transcript from a podcast featuring John Kiriakou (former CIA officer and whistleblower) and find the {num_clips} BEST moments to turn into YouTube Shorts / TikTok clips.
+Analyze this transcript from a podcast featuring John Kiriakou (former CIA officer and whistleblower) and find the {num_clips} BEST moments to turn into viral short-form clips.
+
+HOOK STRATEGY — Every clip MUST start with one of these hook types:
+1. EMOTIONAL HOOK: A moment of raw emotion — anger, fear, disbelief, passion ("I was terrified...", "That destroyed my family...")
+2. POLITICAL HOOK: A bold political claim or insider revelation ("The government lied about...", "Here's what they don't tell you...")
+3. CONTROVERSIAL HOOK: A statement that challenges mainstream narratives or provokes debate ("The CIA actually...", "Nobody wants to admit...")
+4. REVERSAL HOOK: A twist or unexpected revelation that subverts expectations ("Everyone thinks X, but actually...", "I used to believe... until I found out...")
+
+The first 3-5 seconds of each clip MUST contain attention-grabbing words that make the viewer STOP scrolling. Look for moments in the transcript where John says something that would make someone say "wait, WHAT?"
 
 WHAT MAKES A VIRAL CLIP:
-- Shocking revelations or insider secrets from the CIA
-- Strong emotional moments (anger, surprise, humor)
-- Controversial or provocative statements
-- Self-contained stories that make sense without context
-- Punchy quotes that stand alone
-- Moments that make viewers say "wait, WHAT?"
-- Cliffhangers or dramatic pauses
+- Shocking revelations or insider CIA/intelligence secrets
+- Strong emotional intensity (not calm explanation — look for PASSION)
+- Controversial or provocative statements that spark debate
+- Self-contained mini-stories with a clear beginning, tension, and payoff
+- Punchy quotes that stand alone without needing context
+- Moments of conflict, danger, or personal risk
+- Cliffhangers or dramatic reveals
 
 CRITICAL DURATION RULES:
 - EVERY clip MUST be between {min_dur} and {max_dur} seconds long. This is NON-NEGOTIABLE.
@@ -44,13 +52,14 @@ CRITICAL DURATION RULES:
 - Clips must start and end at natural sentence boundaries
 - Each clip must be self-contained and understandable on its own
 - Clips must NOT overlap with each other
-- Prioritize moments where John is speaking directly
+- Prioritize moments where John is speaking directly (not the host asking questions)
 
 Return ONLY a valid JSON array with exactly {num_clips} objects, each with:
 - "start_time": start time in seconds (float)
 - "end_time": end time in seconds (float) — MUST be at least {min_dur} seconds after start_time
-- "title": catchy YouTube Shorts title (max 70 chars, attention-grabbing)
-- "hook": 1-sentence hook text to display in first 2 seconds (max 80 chars)
+- "title": catchy YouTube Shorts title (max 70 chars, attention-grabbing, use power words)
+- "hook": the EXACT attention-grabbing opening words from the transcript that start the clip (max 80 chars). This should be a direct quote of what John says in the first few seconds.
+- "hook_type": one of "emotional", "political", "controversial", "reversal"
 - "description": short description for YouTube (2-3 sentences with hashtags)
 - "virality_score": 1-10 rating of viral potential
 

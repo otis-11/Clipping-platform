@@ -234,27 +234,53 @@ def process_clip(
 
 def add_hook_overlay(clip_path: Path, hook_text: str, output_path: Path) -> Path | None:
     """
-    Add a text hook overlay to the first 2 seconds of the clip.
-    This is the attention-grabbing text that appears at the start.
+    Add a BIG, BOLD hook text overlay to the first 3 seconds of the clip.
+    This is the attention-grabbing text that makes viewers stop scrolling.
+    Large white text with heavy black outline, dark semi-transparent background bar.
     """
     ffmpeg = _get_ffmpeg()
 
-    # Escape single quotes in hook text
-    hook_escaped = hook_text.replace("'", "'\\''").replace(":", "\\:")
+    # Escape special chars for FFmpeg drawtext
+    hook_escaped = (hook_text
+        .replace("\\", "\\\\")
+        .replace("'", "\u2019")  # smart quote
+        .replace(":", "\\:")
+        .replace("%", "%%"))
 
-    # Draw text overlay for first 2 seconds with fade
+    # Break into 2 lines if longer than 30 chars
+    if len(hook_text) > 30:
+        mid = len(hook_text) // 2
+        space_pos = hook_text.rfind(" ", 0, mid + 10)
+        if space_pos > 5:
+            line1 = hook_text[:space_pos].strip()
+            line2 = hook_text[space_pos:].strip()
+            hook_escaped = (line1
+                .replace("\\", "\\\\").replace("'", "\u2019").replace(":", "\\:").replace("%", "%%"))
+            hook_escaped += "\\n" + (line2
+                .replace("\\", "\\\\").replace("'", "\u2019").replace(":", "\\:").replace("%", "%%"))
+
+    # Dark background bar behind the text
+    bg_bar = (
+        "drawbox=x=0:y=(h/2-120):w=iw:h=240"
+        ":color=black@0.6:t=fill"
+        ":enable='between(t,0,3)'"
+    )
+
+    # Big bold white text with thick black outline — centered
     drawtext = (
         f"drawtext=text='{hook_escaped}'"
-        f":fontsize=48:fontcolor=white:borderw=3:bordercolor=black"
-        f":x=(w-text_w)/2:y=(h-text_h)/2"
-        f":enable='between(t,0,2.5)'"
-        f":alpha='if(lt(t,0.3),t/0.3,if(gt(t,2),1-(t-2)/0.5,1))'"
+        f":fontsize=82:fontcolor=white:borderw=5:bordercolor=black"
+        f":shadowcolor=black@0.8:shadowx=3:shadowy=3"
+        f":x=(w-text_w)/2:y=(h/2-text_h/2)"
+        f":line_spacing=12"
+        f":enable='between(t,0,3)'"
+        f":alpha='if(lt(t,0.2),t/0.2,if(gt(t,2.5),1-(t-2.5)/0.5,1))'"
     )
 
     cmd = [
         ffmpeg, "-y",
         "-i", str(clip_path),
-        "-vf", drawtext,
+        "-vf", f"{bg_bar},{drawtext}",
         "-c:v", "libx264", "-preset", "fast", "-crf", "23",
         "-c:a", "copy",
         str(output_path),
@@ -264,7 +290,6 @@ def add_hook_overlay(clip_path: Path, hook_text: str, output_path: Path) -> Path
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         if result.returncode != 0:
             logger.warning(f"Hook overlay failed, using clip without hook: {result.stderr[-300:]}")
-            # Fall back to original clip
             shutil.copy2(clip_path, output_path)
         return output_path
     except Exception as e:
