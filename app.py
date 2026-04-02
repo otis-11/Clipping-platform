@@ -105,43 +105,97 @@ def job_process_new_videos():
         job_status["processing"] = False
 
 
-def job_post_next_approved():
+def job_post_due_clips():
+    """Check every few minutes for approved clips whose scheduled_time has passed."""
     if job_status["posting"]:
         return
-    settings = load_settings()
     job_status["posting"] = True
-    job_status["last_post_time"] = datetime.now().isoformat()
+    now = datetime.now()
+    now_hhmm = now.strftime("%H:%M")
+    logger.info(f"Post-check running at {now_hhmm}")
     try:
         queue = get_queue()
-        # Only post approved clips
         approved = [c for c in queue if c.get("approved", False)]
         if not approved:
             job_status["last_post_result"] = "No approved clips"
             logger.info("No approved clips to post.")
             return
 
-        clip = approved[0]
+        # Find clips whose scheduled_time <= current time
+        due = [c for c in approved if c.get("scheduled_time", "99:99") <= now_hhmm]
+        if not due:
+            logger.info(f"No clips due yet (next: {approved[0].get('scheduled_time','?')})")
+            job_status["last_post_result"] = f"Next due at {approved[0].get('scheduled_time','?')}"
+            return
+
+        # Post the earliest-due clip
+        clip = sorted(due, key=lambda c: c.get("scheduled_time", "00:00"))[0]
         clip_path = Path(clip["clip_path"])
         if not clip_path.exists():
             remove_from_queue(clip)
             job_status["last_post_result"] = "Clip file missing, removed"
+            logger.warning(f"Clip file missing: {clip_path}")
             return
 
+        logger.info(f"Uploading: {clip['title'][:60]}")
+        job_status["last_post_time"] = now.isoformat()
         video_id = upload_short(
             video_path=clip_path,
             title=clip["title"],
             description=clip.get("description", ""),
         )
         if video_id:
-            # Save to history
             _save_to_history(clip, video_id)
             remove_from_queue(clip)
             job_status["last_post_result"] = f"Posted: {clip['title'][:40]}"
+            logger.info(f"Posted successfully: {video_id}")
         else:
-            job_status["last_post_result"] = "Upload failed"
+            job_status["last_post_result"] = "Upload returned no video ID"
+            logger.error("upload_short returned falsy value")
     except Exception as e:
         job_status["last_post_result"] = f"Error: {e}"
         logger.error(f"Post job failed: {e}", exc_info=True)
+    finally:
+        job_status["posting"] = False
+
+
+def job_post_now():
+    """Manual trigger — post the next approved clip immediately."""
+    if job_status["posting"]:
+        return "Already posting"
+    job_status["posting"] = True
+    job_status["last_post_time"] = datetime.now().isoformat()
+    try:
+        queue = get_queue()
+        approved = [c for c in queue if c.get("approved", False)]
+        if not approved:
+            job_status["last_post_result"] = "No approved clips"
+            return "No approved clips"
+
+        clip = approved[0]
+        clip_path = Path(clip["clip_path"])
+        if not clip_path.exists():
+            remove_from_queue(clip)
+            return "Clip file missing"
+
+        logger.info(f"Manual upload: {clip['title'][:60]}")
+        video_id = upload_short(
+            video_path=clip_path,
+            title=clip["title"],
+            description=clip.get("description", ""),
+        )
+        if video_id:
+            _save_to_history(clip, video_id)
+            remove_from_queue(clip)
+            job_status["last_post_result"] = f"Posted: {clip['title'][:40]}"
+            return f"Posted! Video ID: {video_id}"
+        else:
+            job_status["last_post_result"] = "Upload failed"
+            return "Upload failed — no video ID returned"
+    except Exception as e:
+        job_status["last_post_result"] = f"Error: {e}"
+        logger.error(f"Manual post failed: {e}", exc_info=True)
+        return f"Error: {e}"
     finally:
         job_status["posting"] = False
 
@@ -188,24 +242,17 @@ def _rebuild_scheduler():
     for job in scheduler.get_jobs():
         job.remove()
 
-    settings = load_settings()
-
     # Daily processing at 6 AM
     scheduler.add_job(
         job_process_new_videos, "cron", hour=6, minute=0,
         id="process_videos", name="Process new videos", replace_existing=True,
     )
 
-    # Post at configured times
-    for i, time_str in enumerate(settings["post_times"][:settings["clips_per_day"]]):
-        try:
-            h, m = map(int, time_str.split(":"))
-            scheduler.add_job(
-                job_post_next_approved, "cron", hour=h, minute=m,
-                id=f"post_clip_{i}", name=f"Post at {time_str}", replace_existing=True,
-            )
-        except ValueError:
-            pass
+    # Check for due clips every 5 minutes
+    scheduler.add_job(
+        job_post_due_clips, "interval", minutes=5,
+        id="post_due_clips", name="Post due clips (every 5 min)", replace_existing=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -415,7 +462,7 @@ def trigger_process():
 def trigger_post():
     if job_status["posting"]:
         return jsonify({"ok": False, "error": "Already posting"})
-    thread = threading.Thread(target=job_post_next_approved, daemon=True)
+    thread = threading.Thread(target=job_post_now, daemon=True)
     thread.start()
     return jsonify({"ok": True, "message": "Posting started"})
 
