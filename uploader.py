@@ -22,13 +22,31 @@ SCOPES = [
 ]
 
 
-def get_youtube_service():
-    """Authenticate and return a YouTube API service instance."""
+def get_youtube_service(client_secret_path: Path | str | None = None,
+                        token_path: Path | str | None = None):
+    """Authenticate and return a YouTube API service instance.
+
+    Args:
+        client_secret_path: Path to the OAuth client secret JSON.
+            Defaults to the legacy global config value.
+        token_path: Path to the saved OAuth token JSON.
+            Defaults to the legacy global config value.
+    """
+    if client_secret_path is None:
+        client_secret_path = config.PROJECT_DIR / config.YOUTUBE_CLIENT_SECRET_FILE
+    else:
+        client_secret_path = Path(client_secret_path)
+
+    if token_path is None:
+        token_path = config.YOUTUBE_TOKEN_FILE
+    else:
+        token_path = Path(token_path)
+
     creds = None
 
     # Load saved credentials
-    if config.YOUTUBE_TOKEN_FILE.exists():
-        creds = Credentials.from_authorized_user_file(str(config.YOUTUBE_TOKEN_FILE), SCOPES)
+    if token_path.exists():
+        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
 
     # Refresh or get new credentials
     if not creds or not creds.valid:
@@ -39,7 +57,6 @@ def get_youtube_service():
                 creds = None
 
         if not creds:
-            client_secret_path = config.PROJECT_DIR / config.YOUTUBE_CLIENT_SECRET_FILE
             if not client_secret_path.exists():
                 raise FileNotFoundError(
                     f"YouTube client secret file not found: {client_secret_path}\n"
@@ -49,7 +66,7 @@ def get_youtube_service():
             creds = flow.run_local_server(port=0)
 
         # Save credentials
-        with open(config.YOUTUBE_TOKEN_FILE, "w") as f:
+        with open(token_path, "w") as f:
             f.write(creds.to_json())
 
     return build("youtube", "v3", credentials=creds)
@@ -60,6 +77,9 @@ def upload_short(
     title: str,
     description: str,
     tags: list[str] | None = None,
+    category_id: str = "25",
+    client_secret_path: Path | str | None = None,
+    token_path: Path | str | None = None,
 ) -> str | None:
     """
     Upload a video as a YouTube Short.
@@ -84,7 +104,7 @@ def upload_short(
             "title": title,
             "description": description,
             "tags": tags,
-            "categoryId": "25",  # News & Politics
+            "categoryId": category_id,
         },
         "status": {
             "privacyStatus": "public",
@@ -93,7 +113,7 @@ def upload_short(
     }
 
     try:
-        youtube = get_youtube_service()
+        youtube = get_youtube_service(client_secret_path, token_path)
         media = MediaFileUpload(
             str(video_path),
             mimetype="video/mp4",

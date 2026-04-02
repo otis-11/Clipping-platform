@@ -24,7 +24,7 @@ def get_model() -> WhisperModel:
     return _model
 
 
-def transcribe_video(video_path: Path) -> dict:
+def transcribe_video(video_path: Path, transcripts_dir: Path | None = None) -> dict:
     """
     Transcribe a video file and return structured transcript data.
     Returns:
@@ -71,7 +71,8 @@ def transcribe_video(video_path: Path) -> dict:
     }
 
     # Save transcript to disk
-    transcript_path = config.TRANSCRIPTS_DIR / f"{video_path.stem}.json"
+    tdir = transcripts_dir or config.TRANSCRIPTS_DIR
+    transcript_path = tdir / f"{video_path.stem}.json"
     with open(transcript_path, "w", encoding="utf-8") as f:
         json.dump(transcript, f, indent=2, ensure_ascii=False)
 
@@ -79,9 +80,10 @@ def transcribe_video(video_path: Path) -> dict:
     return transcript
 
 
-def load_transcript(video_id: str) -> dict | None:
+def load_transcript(video_id: str, transcripts_dir: Path | None = None) -> dict | None:
     """Load a previously saved transcript."""
-    transcript_path = config.TRANSCRIPTS_DIR / f"{video_id}.json"
+    tdir = transcripts_dir or config.TRANSCRIPTS_DIR
+    transcript_path = tdir / f"{video_id}.json"
     if transcript_path.exists():
         with open(transcript_path, "r", encoding="utf-8") as f:
             return json.load(f)

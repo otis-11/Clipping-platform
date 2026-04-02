@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kiriakou Clipper — Dashboard</title>
+    <title>{{ account.name }} — Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -52,7 +52,26 @@
 <div class="border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-50" style="background:#0f0f1a;">
     <div class="flex items-center gap-3">
         <i class="fas fa-scissors text-red-400 text-xl"></i>
-        <h1 class="text-lg font-bold text-white">Kiriakou Clipper</h1>
+        <!-- Account Switcher Dropdown -->
+        <div class="relative" id="acct-dropdown-wrap">
+            <button onclick="document.getElementById('acct-dropdown').classList.toggle('hidden')" class="flex items-center gap-2 text-lg font-bold text-white hover:text-red-400 transition-colors">
+                {{ account.name }}
+                <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+            </button>
+            <div id="acct-dropdown" class="hidden absolute left-0 top-full mt-2 w-64 card shadow-2xl z-[100] py-2">
+                {% for acct in accounts %}
+                <a href="/{{ acct.id }}/" class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800/60 transition-colors {{ 'bg-gray-800/40 border-l-2 border-red-500' if acct.id == account.id else '' }}">
+                    <i class="fas fa-user-circle {{ 'text-red-400' if acct.id == account.id else 'text-gray-500' }}"></i>
+                    <span class="text-sm {{ 'text-white font-semibold' if acct.id == account.id else 'text-gray-300' }}">{{ acct.name }}</span>
+                </a>
+                {% endfor %}
+                <div class="border-t border-gray-700 mt-2 pt-2 px-4">
+                    <button onclick="showAddAccount()" class="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-2 py-1">
+                        <i class="fas fa-plus-circle"></i> Add Account
+                    </button>
+                </div>
+            </div>
+        </div>
         <span class="text-xs text-gray-500 ml-2">{{ now }}</span>
     </div>
     <div class="flex items-center gap-3">
@@ -141,7 +160,7 @@
                 <!-- Summary Row -->
                 <div class="p-4 flex gap-4 items-center">
                     <div class="flex-shrink-0 w-14 h-24 bg-black rounded-lg overflow-hidden">
-                        <video class="w-full h-full object-cover" src="/preview/{{ vname }}" preload="metadata"></video>
+                        <video class="w-full h-full object-cover" src="/{{ account.id }}/preview/{{ vname }}" preload="metadata"></video>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
@@ -178,7 +197,7 @@
                         <div class="flex-shrink-0 flex flex-col items-center">
                             <div class="rounded-xl overflow-hidden bg-black" style="width:280px;height:498px;">
                                 <video id="video-{{ idx }}" class="w-full h-full object-contain" controls preload="none"
-                                       src="/preview/{{ vname }}">
+                                       src="/{{ account.id }}/preview/{{ vname }}">
                                 </video>
                             </div>
                             <p class="text-xs text-gray-500 mt-2">{{ "%.1f"|format(clip.start_time) }}s — {{ "%.1f"|format(clip.end_time) }}s from source</p>
@@ -200,7 +219,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-400 mb-1"><i class="fas fa-hashtag mr-1 text-purple-400"></i>Hashtags</label>
-                                <input type="text" id="ed-tags-{{ idx }}" value="{{ clip.get('tags', '#JohnKiriakou #CIA #whistleblower #podcast #shorts') }}" class="w-full text-sm">
+                                <input type="text" id="ed-tags-{{ idx }}" value="{{ clip.get('tags', account.get('default_tags', '#shorts')) }}" class="w-full text-sm">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-400 mb-1"><i class="fas fa-clock mr-1 text-cyan-400"></i>Post Time</label>
@@ -444,7 +463,54 @@
 <!-- ============================================================ -->
 <!-- JavaScript                                                    -->
 <!-- ============================================================ -->
+<!-- Add Account Modal -->
+<div id="add-account-modal" class="hidden fixed inset-0 modal-bg z-[200] flex items-center justify-center">
+    <div class="card p-6 w-full max-w-md mx-4">
+        <h2 class="text-lg font-bold text-white mb-4"><i class="fas fa-plus-circle mr-2 text-cyan-400"></i>Add New Account</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">Account Name</label>
+                <input type="text" id="new-acct-name" placeholder="e.g. True Crime Clips" class="w-full text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">Source YouTube Channels <span class="text-gray-600">(comma-separated @handles)</span></label>
+                <input type="text" id="new-acct-channels" placeholder="@ChannelHandle" class="w-full text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">Default Hashtags</label>
+                <input type="text" id="new-acct-tags" placeholder="#shorts #clips" value="#shorts" class="w-full text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">AI Prompt Context <span class="text-gray-600">(who is the speaker?)</span></label>
+                <input type="text" id="new-acct-context" placeholder="e.g. a true crime podcast host" class="w-full text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">YouTube Category</label>
+                <select id="new-acct-category" class="w-full text-sm">
+                    <option value="22">People & Blogs</option>
+                    <option value="24">Entertainment</option>
+                    <option value="25">News & Politics</option>
+                    <option value="27">Education</option>
+                    <option value="28">Science & Technology</option>
+                    <option value="10">Music</option>
+                    <option value="17">Sports</option>
+                </select>
+            </div>
+            <p class="text-xs text-gray-500">You'll need to add <code>client_secret_[id].json</code> and authorize after creating the account.</p>
+            <div class="flex gap-3 pt-2">
+                <button onclick="submitAddAccount()" class="btn-primary text-white px-5 py-2 rounded-lg text-sm font-medium">
+                    <i class="fas fa-plus mr-1"></i> Create Account
+                </button>
+                <button onclick="hideAddAccount()" class="btn-outline text-gray-300 px-5 py-2 rounded-lg text-sm font-medium">Cancel</button>
+            </div>
+            <p id="add-acct-error" class="text-red-400 text-xs hidden"></p>
+        </div>
+    </div>
+</div>
+
 <script>
+const ACCOUNT_ID = '{{ account.id }}';
+const API_BASE = '/' + ACCOUNT_ID;
 const tabs = ['queue','schedule','history','settings','logs'];
 
 function showTab(name) {
@@ -459,13 +525,13 @@ function refreshPage() { location.reload(); }
 
 // --- Queue Actions ---
 async function approveClip(fname) {
-    const r = await fetch('/api/queue/approve/' + fname, { method: 'POST' });
+    const r = await fetch(API_BASE + '/api/queue/approve/' + fname, { method: 'POST' });
     if ((await r.json()).ok) location.reload();
 }
 
 async function rejectClip(fname) {
     if (!confirm('Reject and delete this clip?')) return;
-    const r = await fetch('/api/queue/reject/' + fname, { method: 'POST' });
+    const r = await fetch(API_BASE + '/api/queue/reject/' + fname, { method: 'POST' });
     if ((await r.json()).ok) {
         const el = document.getElementById('clip-' + fname);
         if (el) el.remove();
@@ -474,7 +540,7 @@ async function rejectClip(fname) {
 
 async function approveAll() {
     if (!confirm('Approve all pending clips?')) return;
-    await fetch('/api/queue/approve-all', { method: 'POST' });
+    await fetch(API_BASE + '/api/queue/approve-all', { method: 'POST' });
     location.reload();
 }
 
@@ -546,14 +612,14 @@ async function saveEdit(fname, idx, approve) {
         timezone: document.getElementById('ed-tz-' + idx).value,
     };
 
-    await fetch('/api/queue/edit/' + fname, {
+    await fetch(API_BASE + '/api/queue/edit/' + fname, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
 
     if (approve) {
-        await fetch('/api/queue/approve/' + fname, { method: 'POST' });
+        await fetch(API_BASE + '/api/queue/approve/' + fname, { method: 'POST' });
     }
 
     // Update summary title inline
@@ -576,7 +642,7 @@ async function saveEdit(fname, idx, approve) {
 async function triggerProcess() {
     const btn = document.getElementById('btn-process');
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    await fetch('/api/process-now', { method: 'POST' });
+    await fetch(API_BASE + '/api/process-now', { method: 'POST' });
     btn.innerHTML = '<i class="fas fa-check"></i> Started!';
     setTimeout(() => location.reload(), 3000);
 }
@@ -584,7 +650,7 @@ async function triggerProcess() {
 async function triggerPost() {
     const btn = document.getElementById('btn-post');
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
-    await fetch('/api/post-now', { method: 'POST' });
+    await fetch(API_BASE + '/api/post-now', { method: 'POST' });
     btn.innerHTML = '<i class="fas fa-check"></i> Started!';
     setTimeout(() => location.reload(), 5000);
 }
@@ -596,7 +662,7 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
     const data = {};
     fd.forEach((v, k) => data[k] = v);
     if (!data.require_approval) data.require_approval = 'false';
-    const r = await fetch('/api/settings', {
+    const r = await fetch(API_BASE + '/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -610,7 +676,7 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
 
 // --- Logs ---
 async function loadLogs() {
-    const r = await fetch('/api/logs');
+    const r = await fetch(API_BASE + '/api/logs');
     const data = await r.json();
     const el = document.getElementById('log-content');
     if (data.lines && data.lines.length) {
@@ -634,7 +700,7 @@ function escHtml(s) {
 // --- Auto-refresh status every 10s ---
 setInterval(async () => {
     try {
-        const r = await fetch('/api/status');
+        const r = await fetch(API_BASE + '/api/status');
         const d = await r.json();
         const dot = document.getElementById('status-dot');
         if (d.job_status.processing || d.job_status.posting) {
@@ -644,6 +710,44 @@ setInterval(async () => {
         }
     } catch(e) {}
 }, 10000);
+
+// --- Account Switcher ---
+document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('acct-dropdown-wrap');
+    const dd = document.getElementById('acct-dropdown');
+    if (wrap && !wrap.contains(e.target)) dd.classList.add('hidden');
+});
+
+function showAddAccount() {
+    document.getElementById('acct-dropdown').classList.add('hidden');
+    document.getElementById('add-account-modal').classList.remove('hidden');
+}
+function hideAddAccount() {
+    document.getElementById('add-account-modal').classList.add('hidden');
+}
+async function submitAddAccount() {
+    const errEl = document.getElementById('add-acct-error');
+    errEl.classList.add('hidden');
+    const body = {
+        name: document.getElementById('new-acct-name').value,
+        source_channels: document.getElementById('new-acct-channels').value,
+        default_tags: document.getElementById('new-acct-tags').value,
+        clip_prompt_context: document.getElementById('new-acct-context').value,
+        category_id: document.getElementById('new-acct-category').value,
+    };
+    const r = await fetch('/api/accounts/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (d.ok) {
+        window.location.href = '/' + d.account.id + '/';
+    } else {
+        errEl.textContent = d.error || 'Failed to create account';
+        errEl.classList.remove('hidden');
+    }
+}
 </script>
 
 </body>

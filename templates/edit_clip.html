@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit: {{ clip.title }} — Kiriakou Clipper</title>
+    <title>Edit: {{ clip.title }} — {{ account.name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -33,13 +33,13 @@
 <!-- Top Bar -->
 <div class="border-b border-gray-800 px-6 py-3 flex items-center justify-between" style="background:#0f0f1a;">
     <div class="flex items-center gap-3">
-        <a href="/" class="text-gray-400 hover:text-white text-sm flex items-center gap-2">
+        <a href="/{{ account.id }}/" class="text-gray-400 hover:text-white text-sm flex items-center gap-2">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
     </div>
     <div class="flex items-center gap-3">
         <i class="fas fa-scissors text-red-400"></i>
-        <span class="text-sm font-bold text-white">Kiriakou Clipper</span>
+        <span class="text-sm font-bold text-white">{{ account.name }}</span>
     </div>
 </div>
 
@@ -50,7 +50,7 @@
         <div class="flex-shrink-0 flex flex-col items-center">
             <div class="rounded-xl overflow-hidden bg-black shadow-2xl" style="width:360px; height:640px;">
                 <video id="clip-video" class="w-full h-full object-contain" controls preload="auto"
-                       src="/preview/{{ clip.video_filename }}">
+                       src="/{{ account.id }}/preview/{{ clip.video_filename }}">
                     Your browser does not support the video tag.
                 </video>
             </div>
@@ -163,6 +163,8 @@
 
 <script>
 const FILENAME = "{{ filename }}";
+const ACCOUNT_ID = '{{ account.id }}';
+const API_BASE = '/' + ACCOUNT_ID;
 
 // Title character counter
 document.getElementById('field-title').addEventListener('input', function() {
@@ -178,14 +180,14 @@ async function saveClip(approve) {
         scheduled_time: document.getElementById('field-scheduled-time').value,
     };
 
-    await fetch('/api/queue/edit/' + FILENAME, {
+    await fetch(API_BASE + '/api/queue/edit/' + FILENAME, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
 
     if (approve) {
-        await fetch('/api/queue/approve/' + FILENAME, { method: 'POST' });
+        await fetch(API_BASE + '/api/queue/approve/' + FILENAME, { method: 'POST' });
     }
 
     const msg = document.getElementById('save-msg');
@@ -193,7 +195,7 @@ async function saveClip(approve) {
     msg.classList.remove('hidden');
     setTimeout(() => {
         if (approve) {
-            window.location.href = '/';
+            window.location.href = API_BASE + '/';
         } else {
             msg.classList.add('hidden');
         }
@@ -202,8 +204,8 @@ async function saveClip(approve) {
 
 async function rejectClip() {
     if (!confirm('Permanently delete this clip?')) return;
-    await fetch('/api/queue/reject/' + FILENAME, { method: 'POST' });
-    window.location.href = '/';
+    await fetch(API_BASE + '/api/queue/reject/' + FILENAME, { method: 'POST' });
+    window.location.href = API_BASE + '/';
 }
 </script>
 

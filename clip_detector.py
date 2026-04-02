@@ -24,7 +24,7 @@ def _get_client():
 
 CLIP_DETECTION_PROMPT = """You are a viral content strategist specializing in political/intelligence podcast clips for YouTube Shorts and TikTok.
 
-Analyze this transcript from a podcast featuring John Kiriakou (former CIA officer and whistleblower) and find the {num_clips} BEST moments to turn into viral short-form clips.
+Analyze this transcript from a podcast featuring {prompt_context} and find the {num_clips} BEST moments to turn into viral short-form clips.
 
 HOOK STRATEGY — Every clip MUST start with one of these hook types:
 1. EMOTIONAL HOOK: A moment of raw emotion — anger, fear, disbelief, passion ("I was terrified...", "That destroyed my family...")
@@ -69,7 +69,8 @@ TRANSCRIPT (with timestamps in seconds):
 Return ONLY the JSON array, no markdown, no code fences, no other text."""
 
 
-def detect_clips(transcript: dict, video_title: str, num_clips: int = 8) -> list[dict]:
+def detect_clips(transcript: dict, video_title: str, num_clips: int = 8,
+                 prompt_context: str = "John Kiriakou (former CIA officer and whistleblower)") -> list[dict]:
     """
     Analyze transcript and return the best clip candidates.
     Returns more than needed so we can queue them up over multiple days.
@@ -90,6 +91,7 @@ def detect_clips(transcript: dict, video_title: str, num_clips: int = 8) -> list
         min_dur=config.MIN_CLIP_DURATION,
         max_dur=config.MAX_CLIP_DURATION,
         transcript=transcript_text,
+        prompt_context=prompt_context,
     )
 
     try:
