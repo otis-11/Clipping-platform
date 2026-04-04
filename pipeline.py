@@ -65,7 +65,8 @@ def remove_from_queue(queue_item: dict, posted_dir: Path | None = None):
 
 def process_video(video_info: dict, account_dirs: dict | None = None,
                   account_files: dict | None = None,
-                  prompt_context: str = "John Kiriakou (former CIA officer and whistleblower)") -> int:
+                  prompt_context: str = "John Kiriakou (former CIA officer and whistleblower)",
+                  num_clips: int = 8) -> int:
     """
     Full pipeline for one video. Returns number of clips queued.
 
@@ -102,7 +103,7 @@ def process_video(video_info: dict, account_dirs: dict | None = None,
         return 0
 
     # Step 3: Detect clips
-    clips = detect_clips(transcript, video_title, num_clips=8, prompt_context=prompt_context)
+    clips = detect_clips(transcript, video_title, num_clips=num_clips, prompt_context=prompt_context)
     if not clips:
         logger.warning(f"No clips detected for {video_id}")
         mark_processed(video_id, processed_file=processed_file)
@@ -112,27 +113,17 @@ def process_video(video_info: dict, account_dirs: dict | None = None,
     queued = 0
     for i, clip_info in enumerate(clips):
         clip_filename = f"{video_id}_clip{i:02d}.mp4"
-        raw_clip_path = clips_dir / f"raw_{clip_filename}"
         final_clip_path = clips_dir / clip_filename
 
-        # Cut and reformat the clip
+        # Cut and reformat the clip (no hook overlay)
         result = process_clip(
             video_path=video_path,
             clip_info=clip_info,
             word_segments=transcript.get("word_segments", []),
-            output_path=raw_clip_path,
+            output_path=final_clip_path,
         )
         if not result:
             continue
-
-        # Add hook text overlay
-        hook_text = clip_info.get("hook", "")
-        if hook_text:
-            add_hook_overlay(raw_clip_path, hook_text, final_clip_path)
-            if raw_clip_path.exists() and final_clip_path.exists():
-                raw_clip_path.unlink()
-        else:
-            shutil.move(str(raw_clip_path), str(final_clip_path))
 
         # Queue for upload
         save_to_queue(clip_info, final_clip_path, queue_dir=queue_dir)

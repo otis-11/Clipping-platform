@@ -43,12 +43,14 @@ WHAT MAKES A VIRAL CLIP:
 - Moments of conflict, danger, or personal risk
 - Cliffhangers or dramatic reveals
 
-CRITICAL DURATION RULES:
-- EVERY clip MUST be between {min_dur} and {max_dur} seconds long. This is NON-NEGOTIABLE.
-- The difference between end_time and start_time MUST be at least {min_dur} seconds.
-- For example, if min is 30s: start_time=100.0, end_time=160.0 is a 60s clip (GOOD).
-- A clip of 8 seconds is TOO SHORT and INVALID. Expand it to include surrounding context.
-- Look for continuous stretches of {min_dur}-{max_dur} seconds of compelling content.
+CRITICAL DURATION RULES — READ CAREFULLY:
+- EVERY clip MUST be EXACTLY between {min_dur} and {max_dur} seconds long. This is NON-NEGOTIABLE.
+- CALCULATE: end_time minus start_time MUST be >= {min_dur} and <= {max_dur}. CHECK YOUR MATH.
+- Example: start_time=100.0, end_time=122.0 is a 22s clip (GOOD for 20-25s range).
+- Example: start_time=100.0, end_time=115.0 is only 15s (TOO SHORT — REJECTED). Extend end_time!
+- Example: start_time=100.0, end_time=110.0 is only 10s (TOO SHORT — REJECTED). Extend end_time!
+- If a great moment is only 10-15 seconds, you MUST extend it to include surrounding context until it reaches at least {min_dur} seconds.
+- DOUBLE-CHECK every clip: subtract start_time from end_time and verify it is >= {min_dur}.
 - Clips must start and end at natural sentence boundaries
 - Each clip must be self-contained and understandable on its own
 - Clips must NOT overlap with each other

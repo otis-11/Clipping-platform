@@ -1,8 +1,11 @@
 .env
 client_secret.json
 youtube_token.json
+client_secret_*.json
+youtube_token_*.json
 data/
 logs/
 __pycache__/
 *.pyc
 .windsurf/
+.claude/

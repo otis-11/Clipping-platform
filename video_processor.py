@@ -89,8 +89,8 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial Black,72,&H00FFFFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,0,2,40,40,200,1
-Style: Highlight,Arial Black,72,&H0000FFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,0,2,40,40,200,1
+Style: Default,Arial Black,90,&H00FFFFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,0,2,40,40,750,1
+Style: Highlight,Arial Black,90,&H0000FFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,0,2,40,40,750,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -196,6 +196,9 @@ def process_clip(
         subs_escaped = str(subs_path).replace("\\", "/").replace(":", r"\:")
         filter_parts.append(f"ass='{subs_escaped}'")
 
+    # Speed up video 1.25x (must come AFTER subtitle burn-in so timing stays synced)
+    filter_parts.append("setpts=0.8*PTS")
+
     filter_chain = ",".join(filter_parts)
 
     cmd = [
@@ -207,6 +210,7 @@ def process_clip(
         "-c:v", "libx264",
         "-preset", "fast",
         "-crf", "23",
+        "-af", "atempo=1.25",
         "-c:a", "aac",
         "-b:a", "128k",
         "-movflags", "+faststart",
